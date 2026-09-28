@@ -97,5 +97,18 @@
   "requestDetails": "جزئیات درخواست:",
   "delivery": {
     "pending": "خوانده‌نشده"
+  },
+  "toolCall": {
+    "pending": "در انتظار",
+    "inProgress": "در حال انجام",
+    "fileEdit": "ویرایش فایل",
+    "fileRead": "خواندن فایل",
+    "shellCommand": "دستور Shell",
+    "toolCallId": "شناسه فراخوانی ابزار",
+    "loading": "در حال بارگذاری...",
+    "loadFailed": "بارگذاری خروجی کامل ناموفق بود",
+    "input": "ورودی",
+    "output": "خروجی",
+    "viewSteps": "مشاهده مراحل"
   }
 }

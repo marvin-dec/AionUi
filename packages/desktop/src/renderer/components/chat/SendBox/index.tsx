@@ -51,6 +51,9 @@ import { CloseSmall, Plus, Quote } from '@icon-park/react';
 import { chatFileRefKey } from '@/common/types/chatFile';
 import type { SlashCommandItem } from '@/common/chat/slash/types';
 import { buildSkillSlashCommands, mergeSlashCommands } from '@/common/chat/slash/mergeSlashCommands';
+import { getStarCliExtConfigs, buildStarCliSlashCommands, matchStarCliExt } from '@/common/chat/slash/starCliExt';
+import { isStarCliAgent } from '@/common/chat/slash/isStarCli';
+import '@/common/chat/slash/starCliBuiltin';
 import React, { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
@@ -641,10 +644,19 @@ const SendBox: React.FC<{
     );
   }, [loadedSkills, skillIndex, t]);
 
-  // Priority on name collisions: builtin > ACP agent commands > session skills.
+  // StarCLI extension commands (sf/*) — only for StarCLI ACP agents.
+  const starCliExtConfigs = useMemo(() => {
+    if (conversationContext?.type !== 'acp') return [];
+    if (!isStarCliAgent(conversationContext?.agentName)) return [];
+    return getStarCliExtConfigs();
+  }, [conversationContext?.type, conversationContext?.agentName]);
+
+  const starCliSlashCommands = useMemo(() => buildStarCliSlashCommands(starCliExtConfigs, t), [starCliExtConfigs, t]);
+
+  // Priority on name collisions: builtin > ACP agent commands > StarCLI extensions > session skills.
   const mergedSlashCommands = useMemo(
-    () => mergeSlashCommands(builtinSlashCommands, slash_commands, skillSlashCommands),
-    [builtinSlashCommands, slash_commands, skillSlashCommands]
+    () => mergeSlashCommands(builtinSlashCommands, slash_commands, skillSlashCommands, starCliSlashCommands),
+    [builtinSlashCommands, slash_commands, skillSlashCommands, starCliSlashCommands]
   );
 
   const slashController = useSlashCommandController({
@@ -1565,6 +1577,36 @@ const SendBox: React.FC<{
       setHistoryNavigationIndex(null);
       setInput('');
       void btwCommand.ask(normalizedQuestion);
+      return;
+    }
+
+    // StarCLI extension command interception (sf/*)
+    const sfMatch = matchStarCliExt(input, starCliExtConfigs);
+    if (sfMatch && conversationContext?.conversation_id) {
+      const { config, args } = sfMatch;
+      const params: Record<string, unknown> = {};
+      if (args) {
+        params.args = args;
+      }
+      setInput('');
+      void ipcBridge.acpConversation.extMethod
+        .invoke({
+          conversation_id: conversationContext.conversation_id,
+          method: config.method,
+          params,
+        })
+        .then((result) => {
+          const r = result as { success?: boolean; error?: string } | undefined;
+          if (r?.success) {
+            Message.success(t(`${config.i18nKey}.success`));
+          } else {
+            Message.error(r?.error || t(`${config.i18nKey}.failed`));
+          }
+        })
+        .catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : String(err);
+          Message.error(`${t(`${config.i18nKey}.failed`)}: ${msg}`);
+        });
       return;
     }
 

@@ -205,6 +205,10 @@ docs/superpowers/
 resources/bundled-bun
 resources/bundled-aioncore
 resources/hub
+resources/data
+resources/aioncore.exe
+# AionCore runtime data (copied out of bundled-aioncore at build/run time)
+data/
 /resources/windows/support/_sentry-dsn.generated.nsh
 
 # Server build output
@@ -238,3 +242,4 @@ graphify-out/
 .analysis/
 temp/
 .playwright-mcp/
+.codefree

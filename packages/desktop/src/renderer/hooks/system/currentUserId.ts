@@ -9,10 +9,10 @@
  *
  * Needed because `AuthContext` cannot supply one in the desktop app: its
  * `refresh()` takes an `isDesktopRuntime` branch that sets `status` to
- * `authenticated` and `user` to `null`, so every consumer reading `user?.id`
- * gets `undefined` there. That is fine for UI that only asks "am I logged in",
- * but not for code that must compare against a `user_id` inside a broadcast
- * payload — it silently matches nothing.
+ * `authenticated` but leaves `user` as `null`, so every consumer reading
+ * `user?.id` gets `undefined` there. That is fine for UI that only asks "am I
+ * logged in", but not for code that must compare against a `user_id` inside a
+ * broadcast payload — it silently matches nothing.
  *
  * `GET /api/system/current-user` answers it for every identity mode: it sits
  * behind the ORDINARY auth middleware and echoes whatever `CurrentUser` that

@@ -97,5 +97,42 @@
   "requestDetails": "Request details:",
   "delivery": {
     "pending": "Unread"
+  },
+  "toolCall": {
+    "pending": "Pending",
+    "inProgress": "In Progress",
+    "fileEdit": "File Edit",
+    "fileRead": "File Read",
+    "shellCommand": "Shell Command",
+    "toolCallId": "Tool Call ID",
+    "loading": "Loading...",
+    "loadFailed": "Failed to load full output",
+    "input": "Input",
+    "output": "Output",
+    "viewSteps": "View Steps"
+  },
+  "captureSubmit": {
+    "title": "Rate Response",
+    "tooltip": "Rate",
+    "qualityLabel": "Select response quality",
+    "good": "Good",
+    "acceptable": "Acceptable",
+    "bad": "Bad",
+    "commentLabel": "Comment",
+    "commentOptional": "optional",
+    "commentPlaceholder": "Enter your feedback or suggestion",
+    "selectRequired": "Please select a quality level",
+    "todayLabel": "Today",
+    "success": "Rating submitted",
+    "failed": "Rating failed",
+    "cancel": "Cancel",
+    "submit": "Submit"
+  },
+  "starCliExt": {
+    "feedback": {
+      "description": "Submit Feedback",
+      "success": "Feedback submitted",
+      "failed": "Feedback failed"
+    }
   }
 }

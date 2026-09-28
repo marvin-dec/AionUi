@@ -19,12 +19,13 @@ import { useTranslation } from 'react-i18next';
 import MarkdownView from '@renderer/components/Markdown';
 
 const StatusTag: React.FC<{ status: string }> = ({ status }) => {
+  const { t } = useTranslation();
   const getTagProps = () => {
     switch (status) {
       case 'pending':
-        return { color: 'blue', text: 'Pending' };
+        return { color: 'blue', text: t('messages.toolCall.pending') };
       case 'in_progress':
-        return { color: 'orange', text: 'In Progress' };
+        return { color: 'orange', text: t('messages.toolCall.inProgress') };
       default:
         return { color: 'gray', text: status };
     }
@@ -86,14 +87,14 @@ const ContentView: React.FC<{ content: IMessageAcpToolCall['content']['update'][
   return null;
 };
 
-const getKindDisplayName = (toolKind: string) => {
+const getKindDisplayName = (toolKind: string, t: (key: string) => string) => {
   switch (toolKind) {
     case 'edit':
-      return 'File Edit';
+      return t('messages.toolCall.fileEdit');
     case 'read':
-      return 'File Read';
+      return t('messages.toolCall.fileRead');
     case 'execute':
-      return 'Shell Command';
+      return t('messages.toolCall.shellCommand');
     default:
       return toolKind;
   }
@@ -143,7 +144,7 @@ const MessageAcpToolCall: React.FC<{ message: IMessageAcpToolCall }> = ({ messag
       <div className='flex items-start gap-3'>
         <div className='flex-1 min-w-0'>
           <div className='flex items-center gap-2 mb-2'>
-            <span className='font-medium text-t-primary'>{title || getKindDisplayName(kind)}</span>
+            <span className='font-medium text-t-primary'>{title || getKindDisplayName(kind, t)}</span>
             <StatusTag status={status} />
           </div>
           {rawInput && (
@@ -182,7 +183,9 @@ const MessageAcpToolCall: React.FC<{ message: IMessageAcpToolCall }> = ({ messag
               ))}
             </div>
           )}
-          <div className='text-xs text-t-secondary mt-2'>Tool Call ID: {tool_call_id}</div>
+          <div className='text-xs text-t-secondary mt-2'>
+            {t('messages.toolCall.toolCallId')}: {tool_call_id}
+          </div>
         </div>
       </div>
     </Card>

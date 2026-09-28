@@ -13,7 +13,9 @@ import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { useLocalFilePreview } from '@/renderer/pages/conversation/Preview/hooks/useLocalFilePreview';
 import { iconColors } from '@/renderer/styles/colors';
 import { Alert, Message, Tooltip } from '@arco-design/web-react';
-import { Copy } from '@icon-park/react';
+import { Copy, Star } from '@icon-park/react';
+import CaptureSubmitModal from './CaptureSubmitModal';
+import { getTodayTotal } from './captureStats';
 import classNames from 'classnames';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -124,6 +126,8 @@ const MessageText: React.FC<{
 
   const { t } = useTranslation();
   const [showCopyAlert, setShowCopyAlert] = useState(false);
+  const [showCaptureModal, setShowCaptureModal] = useState(false);
+  const [captureTotal, setCaptureTotal] = useState(() => getTodayTotal());
   const isUserMessage = message.position === 'right';
   // Delivered-but-not-yet-consumed marker for messages sent mid-turn to a
   // supporting backend (claude/codex). The message already reached the
@@ -214,6 +218,25 @@ const MessageText: React.FC<{
     isLastMessage,
     hasTurnAnchor: hasForkAnchor,
   });
+  // 标注按钮：仅 ACP 类型 Agent + AI 回复 + 最后一条文本消息时显示
+  const showCaptureButton =
+    !isUserMessage &&
+    showCopyRow &&
+    conversationContext?.type === 'acp' &&
+    conversationContext?.agentName?.toLowerCase().includes('star');
+  const captureButton = showCaptureButton ? (
+    <Tooltip content={t('messages.captureSubmit.tooltip', { defaultValue: 'Rate' })}>
+      <div
+        className='p-4px rd-4px cursor-pointer hover:bg-3 transition-colors opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto flex items-center gap-2px'
+        onClick={() => setShowCaptureModal(true)}
+        style={{ lineHeight: 0 }}
+      >
+        <Star theme='outline' size='16' fill={iconColors.secondary} />
+        {captureTotal > 0 && <span className='text-11px text-t-secondary leading-none'>{captureTotal}</span>}
+      </div>
+    </Tooltip>
+  ) : null;
+
   const forkButton = showForkButton ? (
     <Tooltip content={t('messages.fork.action')}>
       <div
@@ -362,6 +385,7 @@ const MessageText: React.FC<{
           >
             {copyButton}
             {forkButton}
+            {captureButton}
             {message.created_at && (
               <span className='text-12px text-t-secondary opacity-0 group-hover:opacity-100 transition-opacity select-none'>
                 {formatMessageTime(message.created_at)}
@@ -378,6 +402,17 @@ const MessageText: React.FC<{
           className='fixed top-20px left-50% transform -translate-x-50% z-9999 w-max max-w-[80%]'
           style={{ boxShadow: '0px 2px 12px rgba(0,0,0,0.12)' }}
           closable={false}
+        />
+      )}
+      {showCaptureModal && conversationContext?.conversation_id && (
+        <CaptureSubmitModal
+          visible={showCaptureModal}
+          conversationId={conversationContext.conversation_id}
+          onCancel={() => setShowCaptureModal(false)}
+          onSuccess={() => {
+            setCaptureTotal(getTodayTotal());
+            setShowCaptureModal(false);
+          }}
         />
       )}
     </>

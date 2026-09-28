@@ -1195,6 +1195,18 @@ export const acpConversation = {
     (p) => `/api/conversations/${p.conversation_id}/config-options/${encodeURIComponent(p.option_id)}`,
     (p): SetConfigOptionRequest => ({ value: p.value })
   ),
+  /**
+   * 转发 ACP extMethod 请求给当前会话绑定的 CLI 子进程。
+   *
+   * 用于调用 star CLI 等自定义 Agent 的 `sf/*` 扩展命令，
+   * 如 `sf/captureSubmit`、`sf/feedbackSubmit` 等。
+   *
+   * sessionId 由后端自动注入（从当前 ACP 会话获取）。
+   */
+  extMethod: httpPost<unknown, { conversation_id: string; method: string; params?: Record<string, unknown> }>(
+    (p) => `/api/conversations/${p.conversation_id}/ext-method`,
+    (p) => ({ method: p.method, params: p.params ?? {} })
+  ),
 };
 
 // ---------------------------------------------------------------------------

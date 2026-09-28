@@ -97,5 +97,18 @@
   "requestDetails": "Détails de la demande :",
   "delivery": {
     "pending": "Non lu"
+  },
+  "toolCall": {
+    "pending": "En attente",
+    "inProgress": "En cours",
+    "fileEdit": "Modification de fichier",
+    "fileRead": "Lecture de fichier",
+    "shellCommand": "Commande Shell",
+    "toolCallId": "ID d'appel d'outil",
+    "loading": "Chargement...",
+    "loadFailed": "Échec du chargement de la sortie complète",
+    "input": "Entrée",
+    "output": "Sortie",
+    "viewSteps": "Voir les étapes"
   }
 }

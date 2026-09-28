@@ -97,5 +97,18 @@
   "requestDetails": "リクエスト内容:",
   "delivery": {
     "pending": "未読"
+  },
+  "toolCall": {
+    "pending": "保留中",
+    "inProgress": "進行中",
+    "fileEdit": "ファイル編集",
+    "fileRead": "ファイル読み取り",
+    "shellCommand": "Shell コマンド",
+    "toolCallId": "ツール呼び出し ID",
+    "loading": "読み込み中...",
+    "loadFailed": "完全な出力の読み込みに失敗しました",
+    "input": "入力",
+    "output": "出力",
+    "viewSteps": "手順を表示"
   }
 }

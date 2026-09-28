@@ -53,7 +53,12 @@ export interface ConversationContextValue {
   loadedMcpServers?: string[];
 
   /**
-   * Structured MCP status snapshot for this conversation (from
+   * Agent display name (e.g. "StarFactory")
+   */
+  agentName?: string;
+
+  /**
+   * Loaded MCP status snapshot for this conversation (from
    * conversation.extra.mcp_statuses).
    */
   loadedMcpStatuses?: IConversationMcpStatus[];

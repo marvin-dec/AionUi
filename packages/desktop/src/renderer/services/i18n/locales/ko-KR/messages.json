@@ -97,5 +97,18 @@
   "requestDetails": "요청 내용:",
   "delivery": {
     "pending": "읽지 않음"
+  },
+  "toolCall": {
+    "pending": "대기 중",
+    "inProgress": "진행 중",
+    "fileEdit": "파일 편집",
+    "fileRead": "파일 읽기",
+    "shellCommand": "Shell 명령",
+    "toolCallId": "도구 호출 ID",
+    "loading": "로딩 중...",
+    "loadFailed": "전체 출력 로딩 실패",
+    "input": "입력",
+    "output": "출력",
+    "viewSteps": "단계 보기"
   }
 }
