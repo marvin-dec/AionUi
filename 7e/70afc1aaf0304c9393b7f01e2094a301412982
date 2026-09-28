@@ -1,0 +1,146 @@
+packages/desktop/src/renderer/services/i18n/locales/de-DE/login.json
+  s_fe15cd769849f0::t_b1e51b8a07c4e4 12
+packages/desktop/src/renderer/services/i18n/locales/ko-KR/messages.json
+  s_fe15cd769849f0::t_45557b9f8a9e83 100-112
+packages/desktop/src/renderer/services/i18n/locales/tr-TR/messages.json
+  s_fe15cd769849f0::t_8aedd4772d448f 100-112
+packages/desktop/src/common/chat/slash/starCliBuiltin.ts
+  s_b340900958c62c::t_2a762f732c0273 1-17
+packages/desktop/src/renderer/services/i18n/locales/ja-JP/login.json
+  s_fe15cd769849f0::t_91e79c9a84b970 12
+packages/desktop/src/renderer/hooks/system/currentUserId.ts
+  s_fe15cd769849f0::t_c68cafbc224d9c 12-15
+packages/desktop/src/renderer/pages/conversation/Messages/components/MessageToolGroupSummary.tsx
+  s_fe15cd769849f0::t_56b474710e96be 113
+  s_fe15cd769849f0::t_988132784a17a3 144
+  s_fe15cd769849f0::t_04ee1e7e37d3a5 103-104,107
+  s_fe15cd769849f0::t_b12ef29cb70b92 160
+  s_fe15cd769849f0::t_824fba7f20b242 161-162
+packages/desktop/src/renderer/pages/conversation/Messages/acp/MessageAcpToolCall.tsx
+  s_fe15cd769849f0::t_3979d9af0bf393 22,26,28
+  s_fe15cd769849f0::t_96520053b53943 90,93,95,97
+  s_fe15cd769849f0::t_2bda82239538f2 147
+  s_fe15cd769849f0::t_f9e50753c7e270 186
+  s_fe15cd769849f0::t_c4b394a3a0e5ae 187-188
+packages/desktop/src/renderer/services/i18n/locales/ko-KR/login.json
+  s_fe15cd769849f0::t_67b599a592fb9b 12
+packages/desktop/src/renderer/pages/conversation/Messages/components/CaptureSubmitModal.tsx
+  s_b340900958c62c::t_cfce88f5c01f00 133-138
+  s_3fc6e8006bef65::t_c919a02cbbb7e0 9,17
+  s_b340900958c62c::t_ecb0394c1b1591 141
+  s_b340900958c62c::t_1f428857cd7311 14
+  s_3fc6e8006bef65::t_4dba795e968a28 6-8
+  s_b340900958c62c::t_3bf5294d171307 139-140
+  s_b340900958c62c::t_6a56294017e5ba 142-144
+packages/desktop/src/renderer/services/i18n/locales/fa-IR/login.json
+  s_fe15cd769849f0::t_db70ed483e6778 12
+packages/desktop/src/renderer/services/i18n/locales/es-ES/messages.json
+  s_fe15cd769849f0::t_92fe9111e39025 100-112
+packages/desktop/src/renderer/services/i18n/locales/ru-RU/login.json
+  s_fe15cd769849f0::t_c60c384ccc4495 12
+packages/desktop/src/renderer/services/i18n/locales/zh-CN/login.json
+  s_fe15cd769849f0::t_ec966f7ea4a81f 12
+packages/desktop/src/renderer/services/i18n/locales/es-ES/login.json
+  s_fe15cd769849f0::t_44ea311d68abf3 12
+packages/desktop/src/renderer/services/i18n/locales/fr-FR/messages.json
+  s_fe15cd769849f0::t_a24b8695ed651e 100-112
+packages/desktop/src/renderer/services/i18n/locales/zh-TW/login.json
+  s_fe15cd769849f0::t_747b12de002e62 12
+packages/desktop/src/renderer/services/i18n/locales/en-US/login.json
+  s_fe15cd769849f0::t_6e559053f0f3bc 12
+packages/desktop/src/renderer/pages/conversation/Messages/components/MessageToolCall.tsx
+  s_fe15cd769849f0::t_2f880f82ac7bff 59
+  s_fe15cd769849f0::t_7fa101f69bde3f 17
+  s_fe15cd769849f0::t_7acccdf9f34953 111
+  s_fe15cd769849f0::t_d2b418bac32e11 105
+packages/desktop/src/renderer/services/i18n/locales/tr-TR/login.json
+  s_fe15cd769849f0::t_aa0f70bb39565e 12
+packages/desktop/src/renderer/services/i18n/locales/fa-IR/messages.json
+  s_fe15cd769849f0::t_249f81e1d78063 100-112
+packages/desktop/src/renderer/services/i18n/locales/zh-CN/messages.json
+  s_fe15cd769849f0::t_8bb2e18313f0e4 100-112
+  s_b340900958c62c::t_986edb1792118f 130-136
+packages/desktop/src/renderer/components/chat/SendBox/index.tsx
+  s_b340900958c62c::t_b3da7551cd6764 647-656,658-659
+  s_b340900958c62c::t_ab988b535ff9e0 1583-1612
+  s_b340900958c62c::t_2f2e5f95539f16 54-56
+packages/desktop/src/renderer/services/i18n/i18n-keys.d.ts
+  s_fe15cd769849f0::t_bc932ea25d00f0 1105
+packages/desktop/src/renderer/services/i18n/locales/pt-BR/login.json
+  s_fe15cd769849f0::t_1dd0f3d3b62170 12
+packages/desktop/src/renderer/services/i18n/locales/ja-JP/messages.json
+  s_fe15cd769849f0::t_3e393af1a6dd08 100-112
+packages/desktop/src/renderer/services/i18n/locales/ru-RU/messages.json
+  s_fe15cd769849f0::t_cb07376592f82d 104-116
+packages/desktop/src/renderer/services/i18n/locales/de-DE/messages.json
+  s_fe15cd769849f0::t_08e18d426a2615 100-112
+packages/desktop/src/common/chat/slash/starCliExt.ts
+  s_b340900958c62c::t_5616feb45d595c 1-63
+packages/desktop/src/renderer/pages/conversation/Messages/components/CaptureSubmitModal.module.css
+  s_b340900958c62c::t_d2c49c71cdec4f 1-7
+packages/desktop/src/renderer/pages/login/LoginPage.css
+  s_fe15cd769849f0::t_cd4e949b9d3566 305-327
+packages/desktop/src/common/chat/slash/mergeSlashCommands.ts
+  s_b340900958c62c::t_7243b5b2525212 40,45-46,49
+packages/desktop/src/renderer/services/i18n/locales/en-US/messages.json
+  s_b340900958c62c::t_62ec86b36f5b69 130-136
+  s_fe15cd769849f0::t_64f65664eb8f75 100-112
+packages/desktop/src/renderer/services/i18n/locales/zh-TW/messages.json
+  s_fe15cd769849f0::t_50f29ddc18bfcb 100-112
+packages/desktop/src/renderer/services/i18n/locales/uk-UA/login.json
+  s_fe15cd769849f0::t_edfebd614e4469 12
+packages/desktop/src/renderer/services/i18n/locales/uk-UA/messages.json
+  s_fe15cd769849f0::t_c08d27d6533fce 106-118
+packages/desktop/src/renderer/hooks/context/AuthContext.tsx
+  s_fe15cd769849f0::t_d690fd869b0352 317
+  s_fe15cd769849f0::t_0375a962ce93b1 48
+  s_fe15cd769849f0::t_6f56c8ba71280a 145-149
+  s_fe15cd769849f0::t_b062081dbafe67 184
+  s_fe15cd769849f0::t_cfb6d4a3a24591 185
+  s_fe15cd769849f0::t_35fdfc14f82e38 315-316,318-321,331,333
+  s_fe15cd769849f0::t_d0cbced9bde61a 288,290
+  s_fe15cd769849f0::t_f01f1c6b7f31c7 17-18
+  s_fe15cd769849f0::t_a7b778c7bd52ce 142-144,150-153
+packages/desktop/src/renderer/services/i18n/locales/fr-FR/login.json
+  s_fe15cd769849f0::t_00501621f92909 12
+packages/desktop/src/renderer/pages/login/index.tsx
+  s_fe15cd769849f0::t_e8aa5fda09b58f 37
+  s_fe15cd769849f0::t_4434ff589ad81c 109-115
+  s_fe15cd769849f0::t_2a540d590dc992 344-349
+packages/desktop/src/renderer/services/i18n/locales/pt-BR/messages.json
+  s_fe15cd769849f0::t_cd6d9447ecabd3 100-112
+packages/desktop/src/common/chat/slash/isStarCli.ts
+  s_b340900958c62c::t_c5e2a240029d5c 1-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "7e70afc1aaf0304c9393b7f01e2094a301412982",
+  "prompts": {},
+  "sessions": {
+    "s_3fc6e8006bef65": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dabc4dbe-9b54-410d-aad7-b613ac433864",
+        "model": "glm-5.2"
+      },
+      "human_author": "MarvinZhang <zhangq95@chinatelecom.cn>"
+    },
+    "s_b340900958c62c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3cd5420-706b-4ac2-84f4-ec9a37d2250f",
+        "model": "glm-5.2"
+      },
+      "human_author": "MarvinZhang <zhangq95@chinatelecom.cn>"
+    },
+    "s_fe15cd769849f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6795b73a-f739-406e-80d8-ac6fa2200226",
+        "model": "glm-5.2"
+      },
+      "human_author": "MarvinZhang <zhangq95@chinatelecom.cn>"
+    }
+  }
+}
