@@ -97,5 +97,18 @@
   "requestDetails": "İstek ayrıntıları:",
   "delivery": {
     "pending": "Okunmadı"
+  },
+  "toolCall": {
+    "pending": "Bekliyor",
+    "inProgress": "Devam ediyor",
+    "fileEdit": "Dosya Düzenleme",
+    "fileRead": "Dosya Okuma",
+    "shellCommand": "Shell Komutu",
+    "toolCallId": "Araç Çağrı ID",
+    "loading": "Yükleniyor...",
+    "loadFailed": "Tam çıktı yüklenemedi",
+    "input": "Giriş",
+    "output": "Çıkış",
+    "viewSteps": "Adımları Gör"
   }
 }

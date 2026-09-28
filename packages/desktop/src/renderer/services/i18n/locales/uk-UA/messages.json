@@ -103,5 +103,18 @@
   "requestDetails": "Деталі запиту:",
   "delivery": {
     "pending": "Непрочитано"
+  },
+  "toolCall": {
+    "pending": "Очікування",
+    "inProgress": "Виконується",
+    "fileEdit": "Редагування файлу",
+    "fileRead": "Читання файлу",
+    "shellCommand": "Команда Shell",
+    "toolCallId": "ID виклику інструменту",
+    "loading": "Завантаження...",
+    "loadFailed": "Не вдалося завантажити повний вивід",
+    "input": "Введення",
+    "output": "Виведення",
+    "viewSteps": "Показати кроки"
   }
 }

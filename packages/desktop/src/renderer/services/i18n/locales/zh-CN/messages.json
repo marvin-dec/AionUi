@@ -97,5 +97,42 @@
   "requestDetails": "请求内容：",
   "delivery": {
     "pending": "未读"
+  },
+  "toolCall": {
+    "pending": "等待中",
+    "inProgress": "进行中",
+    "fileEdit": "文件编辑",
+    "fileRead": "文件读取",
+    "shellCommand": "Shell 命令",
+    "toolCallId": "工具调用 ID",
+    "loading": "加载中...",
+    "loadFailed": "加载完整输出失败",
+    "input": "输入",
+    "output": "输出",
+    "viewSteps": "查看步骤"
+  },
+  "captureSubmit": {
+    "title": "标注回复质量",
+    "tooltip": "标注",
+    "qualityLabel": "请选择回复质量",
+    "good": "满意",
+    "acceptable": "一般",
+    "bad": "不满意",
+    "commentLabel": "补充说明",
+    "commentOptional": "选填",
+    "commentPlaceholder": "请输入您的建议或说明",
+    "selectRequired": "请选择一个质量等级",
+    "todayLabel": "今日标注",
+    "success": "标注成功",
+    "failed": "标注失败",
+    "cancel": "取消",
+    "submit": "提交"
+  },
+  "starCliExt": {
+    "feedback": {
+      "description": "提交反馈",
+      "success": "反馈提交成功",
+      "failed": "反馈提交失败"
+    }
   }
 }

@@ -14,6 +14,7 @@ import { Badge } from '@arco-design/web-react';
 import { IconDown, IconRight } from '@arco-design/web-react/icon';
 import { createTwoFilesPatch } from 'diff';
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { BadgeProps } from '@arco-design/web-react';
 import './MessageToolGroupSummary.css';
 
@@ -55,6 +56,7 @@ const ReplacePreview: React.FC<{ message: IMessageToolCall }> = ({ message }) =>
 };
 
 const MessageToolCall: React.FC<{ message: IMessageToolCall }> = ({ message }) => {
+  const { t } = useTranslation();
   const { name } = message.content;
   const [expanded, setExpanded] = useState(false);
 
@@ -100,13 +102,13 @@ const MessageToolCall: React.FC<{ message: IMessageToolCall }> = ({ message }) =
         <div className='tool-detail-panel m-l-20px m-t-4px'>
           {normalized.input && (
             <div className='tool-detail-section'>
-              <div className='tool-detail-label'>Input</div>
+              <div className='tool-detail-label'>{t('messages.toolCall.input')}</div>
               <pre className='tool-detail-content'>{normalized.input}</pre>
             </div>
           )}
           {normalized.output && (
             <div className='tool-detail-section'>
-              <div className='tool-detail-label'>Output</div>
+              <div className='tool-detail-label'>{t('messages.toolCall.output')}</div>
               <pre className='tool-detail-content'>{normalized.output}</pre>
             </div>
           )}

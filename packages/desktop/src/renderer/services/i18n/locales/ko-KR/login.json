@@ -9,6 +9,7 @@
   "rememberMe": "로그인 상태 유지",
   "submit": "로그인",
   "submitting": "로그인 중...",
+  "skipLogin": "로그인 건너뛰기",
   "success": "로그인 성공! 리디렉션 중...",
   "showPassword": "비밀번호 표시",
   "hidePassword": "비밀번호 숨기기",

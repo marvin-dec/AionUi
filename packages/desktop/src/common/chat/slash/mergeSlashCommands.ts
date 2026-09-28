@@ -37,15 +37,16 @@ export function buildSkillSlashCommands(
 /**
  * Merges the slash command groups into a single de-duplicated list. Earlier
  * groups win on name collisions, so the intended priority is:
- * builtin > ACP agent commands > session skills.
+ * builtin > ACP agent commands > StarCLI extensions > session skills.
  */
 export function mergeSlashCommands(
   builtin: readonly SlashCommandItem[],
   acp: readonly SlashCommandItem[],
-  skills: readonly SlashCommandItem[]
+  skills: readonly SlashCommandItem[],
+  starCli: readonly SlashCommandItem[] = []
 ): SlashCommandItem[] {
   const map = new Map<string, SlashCommandItem>();
-  for (const group of [builtin, acp, skills]) {
+  for (const group of [builtin, acp, starCli, skills]) {
     for (const command of group) {
       if (!map.has(command.name)) {
         map.set(command.name, command);

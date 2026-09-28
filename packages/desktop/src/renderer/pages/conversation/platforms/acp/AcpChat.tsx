@@ -84,6 +84,7 @@ const AcpChat: React.FC<{
         loadedMcpServers,
         loadedMcpStatuses,
         assistantId,
+        agentName: agent_name,
         forkCapability,
         promptCapability,
       }}

@@ -97,5 +97,18 @@
   "requestDetails": "請求內容：",
   "delivery": {
     "pending": "未讀"
+  },
+  "toolCall": {
+    "pending": "等待中",
+    "inProgress": "進行中",
+    "fileEdit": "檔案編輯",
+    "fileRead": "檔案讀取",
+    "shellCommand": "Shell 命令",
+    "toolCallId": "工具呼叫 ID",
+    "loading": "載入中...",
+    "loadFailed": "載入完整輸出失敗",
+    "input": "輸入",
+    "output": "輸出",
+    "viewSteps": "查看步驟"
   }
 }

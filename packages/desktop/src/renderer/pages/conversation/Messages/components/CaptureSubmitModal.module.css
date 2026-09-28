@@ -1,0 +1,7 @@
+.radio :global(.arco-radio-icon-dot) {
+  vertical-align: middle;
+}
+
+.radio :global(.arco-radio > span:last-child) {
+  vertical-align: middle;
+}
