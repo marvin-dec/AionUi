@@ -14,8 +14,6 @@ export interface AuthUser {
   username: string;
 }
 
-const LOCAL_LOGIN_SKIPPED_KEY = 'localLoginSkipped';
-
 interface LoginParams {
   username: string;
   password: string;
@@ -45,7 +43,6 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
   clearAuthCache: () => void;
-  skipLogin: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -139,18 +136,8 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 
   const refresh = useCallback(async () => {
     if (isDesktopRuntime) {
-      const skipped = localStorage.getItem(LOCAL_LOGIN_SKIPPED_KEY) === 'true';
-      if (skipped) {
-        setStatus('authenticated');
-        // Keep user as null in desktop mode: downstream consumers (useTeamList,
-        // FeedbackReportModal) fall back to resolveCurrentUserId() which queries
-        // the backend for the real user id. Setting a synthetic user here would
-        // override that fallback with a mismatched id.
-        setUser(null);
-      } else {
-        setStatus('unauthenticated');
-        setUser(null);
-      }
+      setStatus('authenticated');
+      setUser(null);
       setReady(true);
       return;
     }
@@ -181,8 +168,6 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const login = useCallback(async ({ username, password, remember }: LoginParams): Promise<LoginResult> => {
     try {
       if (isDesktopRuntime) {
-        setUser(null);
-        setStatus('authenticated');
         setReady(true);
         return { success: true };
       }
@@ -285,9 +270,8 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 
   const logout = useCallback(async () => {
     if (isDesktopRuntime) {
-      localStorage.removeItem(LOCAL_LOGIN_SKIPPED_KEY);
       setUser(null);
-      setStatus('unauthenticated');
+      setStatus('authenticated');
       setReady(true);
       return;
     }
@@ -312,13 +296,6 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     }
   }, []);
 
-  const skipLogin = useCallback(() => {
-    localStorage.setItem(LOCAL_LOGIN_SKIPPED_KEY, 'true');
-    setUser(null);
-    setStatus('authenticated');
-    setReady(true);
-  }, []);
-
   const value = useMemo<AuthContextValue>(
     () => ({
       ready,
@@ -328,9 +305,8 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       logout,
       refresh,
       clearAuthCache,
-      skipLogin,
     }),
-    [login, logout, ready, refresh, skipLogin, status, user]
+    [login, logout, ready, refresh, status, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

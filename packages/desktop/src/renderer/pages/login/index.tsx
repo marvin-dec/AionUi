@@ -34,7 +34,7 @@ const deobfuscate = (text: string): string => {
 const LoginPage: React.FC = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { status, login, skipLogin } = useAuth();
+  const { status, login } = useAuth();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -105,13 +105,6 @@ const LoginPage: React.FC = () => {
     },
     [clearMessageLater]
   );
-
-  const isDesktop = typeof window !== 'undefined' && Boolean(window.electronAPI);
-
-  const handleSkipLogin = useCallback(() => {
-    skipLogin();
-    void navigate('/guid', { replace: true });
-  }, [skipLogin, navigate]);
 
   const supportedLanguages = useMemo<{ code: string; label: string }[]>(
     () => [
@@ -340,12 +333,6 @@ const LoginPage: React.FC = () => {
             )}
             <span>{loading ? t('login.submitting') : t('login.submit')}</span>
           </button>
-
-          {isDesktop && (
-            <button type='button' className='login-page__skip' onClick={handleSkipLogin}>
-              {t('login.skipLogin')}
-            </button>
-          )}
 
           <div
             role='alert'
