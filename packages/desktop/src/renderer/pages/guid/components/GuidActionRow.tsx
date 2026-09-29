@@ -56,7 +56,7 @@ const SubmenuSearchList: React.FC<{
 }> = ({ showSearch, query, onQueryChange, placeholder, searchTestId, emptyText, isEmpty, children }) => (
   <>
     {showSearch ? (
-      <div className='px-6px pt-4px pb-6px' style={{ background: 'var(--color-bg-popup)' }}>
+      <div className='px-6px pt-4px pb-6px' style={{ background: 'var(--color-bg-popup)' }} onMouseDown={(e) => e.stopPropagation()}>
         <AionInlineSearchInput
           value={query}
           onChange={onQueryChange}
@@ -588,7 +588,7 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
               )}
             </span>
           ) : (
-            <Dropdown trigger='hover' onVisibleChange={handlePlusDropdownVisibleChange} droplist={menuContent}>
+            <Dropdown trigger='click' onVisibleChange={handlePlusDropdownVisibleChange} droplist={menuContent}>
               <span className='flex items-center gap-4px cursor-pointer lh-[1]'>
                 <Button
                   type='secondary'
