@@ -1,0 +1,20 @@
+packages/desktop/src/renderer/pages/guid/components/GuidActionRow.tsx
+  s_50275f7bdc3ac1::t_bf042c87b7bacc 59
+  s_50275f7bdc3ac1::t_87ee8d883617b7 591
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b58035d5c697678006a0a2f768060e6f41b110a4",
+  "prompts": {},
+  "sessions": {
+    "s_50275f7bdc3ac1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d2a0b5d-d24b-404a-828e-da1ef4889ae4",
+        "model": "glm-5.2"
+      },
+      "human_author": "MarvinZhang <zhangq95@chinatelecom.cn>"
+    }
+  }
+}
