@@ -56,7 +56,7 @@ const SubmenuSearchList: React.FC<{
 }> = ({ showSearch, query, onQueryChange, placeholder, searchTestId, emptyText, isEmpty, children }) => (
   <>
     {showSearch ? (
-      <div className='px-6px pt-4px pb-6px' style={{ background: 'var(--color-bg-popup)' }} onMouseDown={(e) => e.stopPropagation()}>
+      <div className='px-6px pt-4px pb-6px' style={{ background: 'var(--color-bg-popup)' }} onMouseDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
         <AionInlineSearchInput
           value={query}
           onChange={onQueryChange}
