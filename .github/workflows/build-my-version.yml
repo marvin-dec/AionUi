@@ -1,0 +1,658 @@
+name: '🚀 Build My Version (AionCore + AionUi)'
+
+# Fork 定制打包：同一个 workflow 内编译自己的 AionCore 后端并打进 AionUi 安装包。
+# 平台矩阵：Windows x64 + macOS arm64 + macOS x64（一次触发并行构建，可用 platform 输入只打指定平台）。
+#
+# 为什么用 AIONUI_BACKEND_LOCAL_BUNDLE_DIR 注入后端：
+# prepare-aioncore.js 的解析顺序是 LOCAL_BUNDLE_DIR > Actions artifact(run id) > GitHub Release(pin) > LOCAL_BINARY。
+# LOCAL_BUNDLE_DIR 排第一且直接短路，杜绝"忘填 run id 时静默下载上游官方二进制"的风险。
+#
+# managed-resources 由新编译的 aioncore 自己生成（官方 CI 同款方式，
+# 即 aioncore --data-dir <tmp> prepare-managed-resources --bundle-out <dir>），
+# 不需要像本地打包那样从已安装的 AionUI 复制。
+#
+# CI 在 GitHub 海外网络下运行：npmmirror 镜像、AIONUI_HUB_SKIP 均无需设置。
+#
+# 签名说明：
+# - Windows：不配签名 secrets → 无签名构建（rcedit 图标正常写入），与本地 signExecutable=false 等效。
+# - macOS：不配 BUILD_CERTIFICATE_BASE64 → 无签名构建（electron-builder 对 arm64 自动做 ad-hoc 签名保证可运行）。
+#   收到包的人首次打开会遇到 Gatekeeper 提示（详见运行页 Summary 里的说明）。
+#   如需正式签名：在仓库 Secrets 配置 BUILD_CERTIFICATE_BASE64 / P12_PASSWORD / IDENTITY，
+#   本 workflow 的证书导入与签名 env 已预留，配上即生效。公证（notarization）需 Apple 开发者账号，
+#   暂未接线，需要时按官方 _build-reusable.yml 的 macOS 构建步骤补 appleId 系列环境变量。
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: '要打哪些平台'
+        required: true
+        type: choice
+        options:
+          - all
+          - windows-x64
+          - macos-all
+          - macos-arm64
+          - macos-x64
+        default: 'all'
+      ui_ref:
+        description: 'AionUi 分支/tag（留空 = 触发时所在分支）'
+        required: false
+        default: ''
+        type: string
+      core_ref:
+        description: 'AionCore 分支/tag'
+        required: true
+        default: 'local_customizations'
+        type: string
+      core_repo:
+        description: 'AionCore 仓库 (owner/repo)'
+        required: true
+        default: 'marvin-dec/AionCore'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-my-version-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  BUN_INSTALL_REGISTRY: 'https://registry.npmjs.org/'
+  # hub 扩展资源 tag，与官方 _build-reusable.yml 保持一致
+  AIONUI_HUB_TAG: 'dist-ebc6a2b'
+  CARGO_TERM_COLOR: always
+  CARGO_HTTP_TIMEOUT: '600'
+  CARGO_NET_RETRY: '10'
+
+jobs:
+  # ---------- Windows x64 ----------
+  build-windows-x64:
+    name: 'Windows x64'
+    if: inputs.platform == 'all' || inputs.platform == 'windows-x64'
+    runs-on: windows-2022
+    timeout-minutes: 120
+
+    steps:
+      # ---------- 源码准备 ----------
+      - name: Checkout AionUi
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ui_ref || github.ref }}
+
+      - name: Record AionUi commit
+        id: ui_commit
+        shell: bash
+        run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout AionCore
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ inputs.core_repo }}
+          ref: ${{ inputs.core_ref }}
+          path: aioncore-src
+
+      - name: Record AionCore commit
+        id: core_commit
+        shell: bash
+        working-directory: aioncore-src
+        run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      # ---------- AionCore 编译（与官方 build-manual.yml Windows x64 步骤对齐） ----------
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.95.0'
+          targets: x86_64-pc-windows-msvc
+
+      # Git 自带的 link.exe 会与 MSVC linker 冲突（官方 workflow 同款处理）
+      - name: Fix MSVC linker (remove Git's link.exe)
+        shell: pwsh
+        run: Remove-Item 'C:\Program Files\Git\usr\bin\link.exe' -Force -ErrorAction SilentlyContinue
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: 'aioncore-src'
+          shared-key: custom-win-x64-${{ inputs.core_ref }}
+
+      - name: Build aioncore binary
+        shell: pwsh
+        working-directory: aioncore-src
+        env:
+          # 静态链接 CRT，与官方 Release 分发一致，目标机器无需 VC++ 运行库
+          RUSTFLAGS: '-C target-feature=+crt-static'
+        run: cargo build --release --target x86_64-pc-windows-msvc -p aionui-app
+
+      # ---------- 组装本地 bundle ----------
+      - name: Assemble local aioncore bundle
+        id: bundle
+        shell: pwsh
+        env:
+          AIONUI_BUNDLED_MANAGED_RESOURCES: ''
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $coreExe = 'aioncore-src/target/x86_64-pc-windows-msvc/release/aioncore.exe'
+          if (-not (Test-Path $coreExe)) { throw "aioncore.exe not found: $coreExe" }
+
+          $bundle = Join-Path $env:GITHUB_WORKSPACE 'aioncore-bundle'
+          New-Item -ItemType Directory -Force -Path $bundle | Out-Null
+          Copy-Item $coreExe (Join-Path $bundle 'aioncore.exe') -Force
+
+          # 与官方 prepareManagedResources() 相同的调用方式：
+          # aioncore --data-dir <tmp> prepare-managed-resources --bundle-out <out>
+          $dataDir = Join-Path $env:RUNNER_TEMP 'aioncore-prepare-data'
+          $mrOut = Join-Path $bundle 'managed-resources'
+          New-Item -ItemType Directory -Force -Path $mrOut | Out-Null
+          Write-Host 'Generating managed-resources with the fresh binary...'
+          & (Join-Path $bundle 'aioncore.exe') --data-dir $dataDir prepare-managed-resources --bundle-out $mrOut
+          if ($LASTEXITCODE -ne 0) { throw "prepare-managed-resources failed (exit $LASTEXITCODE)" }
+          Remove-Item -Recurse -Force $dataDir -ErrorAction SilentlyContinue
+
+          $mrCount = (Get-ChildItem $mrOut -Recurse -File).Count
+          Write-Host "managed-resources: $mrCount files"
+          if ($mrCount -lt 100) { throw "managed-resources looks incomplete: $mrCount files" }
+
+          $sha = (Get-FileHash (Join-Path $bundle 'aioncore.exe') -Algorithm SHA256).Hash
+          "sha256=$sha" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      # ---------- AionUi 构建（与官方 _build-reusable.yml Windows 步骤对齐） ----------
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache Electron artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/.cache/electron
+            ${{ runner.temp }}/.cache/electron-builder
+          key: electron-cache-windows-x64-${{ hashFiles('package.json', 'bun.lock') }}
+          restore-keys: |
+            electron-cache-windows-x64-
+
+      - name: Install dependencies
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_wait_seconds: 30
+          command: bun install --frozen-lockfile
+
+      - name: Run postinstall
+        shell: pwsh
+        run: bun run postinstall || true
+
+      - name: Setup Windows native dependencies
+        shell: pwsh
+        run: bun install --global node-gyp
+
+      - name: Setup Windows build environment
+        shell: pwsh
+        run: |
+          echo 'Setting Windows SDK version for ConPty support'
+          echo 'WindowsTargetPlatformVersion=10.0.19041.0' >> $env:GITHUB_ENV
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: '17.0'
+
+      - name: Rebuild native modules for Electron
+        shell: pwsh
+        env:
+          npm_config_runtime: electron
+          npm_config_arch: x64
+          npm_config_target_arch: x64
+          npm_config_disturl: https://electronjs.org/headers
+          MSVS_VERSION: 2022
+          GYP_MSVS_VERSION: 2022
+        run: |
+          $arch = 'x64'
+          $electronVer = (node -p "require('./package.json').devDependencies.electron.replace(/[\^~]/g, '')").Trim()
+
+          Write-Host '=========================================='
+          Write-Host "Rebuilding native modules for Electron $electronVer ($arch)"
+          Write-Host '=========================================='
+
+          # 优先 prebuild-install（下载预编译二进制），失败再走 electron-rebuild 从源码编译
+          Write-Host ''
+          Write-Host '[Step 1] Trying prebuild-install...'
+          try {
+            bun x --yes prebuild-install --runtime=electron --target=$electronVer --platform=win32 --arch=$arch --force 2>&1
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host '✅ prebuild-install succeeded'
+            } else {
+              Write-Host "⚠️ prebuild-install exited with code $LASTEXITCODE"
+            }
+          } catch {
+            Write-Host "⚠️ prebuild-install failed: $_"
+          }
+
+          $sqliteNode = 'node_modules/better-sqlite3/build/Release/better_sqlite3.node'
+          if (-not (Test-Path $sqliteNode)) {
+            Write-Host ''
+            Write-Host "[Step 2] prebuild-install didn't produce binary, trying electron-rebuild..."
+            try {
+              bunx electron-rebuild -f -w better-sqlite3
+              if ($LASTEXITCODE -eq 0) { Write-Host '✅ electron-rebuild succeeded' }
+            } catch {
+              Write-Host "❌ electron-rebuild failed: $_"
+            }
+          }
+
+          Write-Host ''
+          Write-Host 'Verifying native modules...'
+          if (Test-Path $sqliteNode) {
+            $size = [math]::Round((Get-Item $sqliteNode).Length / 1MB, 1)
+            Write-Host "✅ better-sqlite3 found: $sqliteNode ($size MB)"
+          } else {
+            Write-Error "❌ better-sqlite3 native module not found at: $sqliteNode"
+            exit 1
+          }
+          exit 0
+
+      - name: Build installer with electron-builder
+        shell: pwsh
+        env:
+          AIONUI_BACKEND_LOCAL_BUNDLE_DIR: ${{ github.workspace }}/aioncore-bundle
+          NODE_OPTIONS: '--max-old-space-size=8192'
+          npm_config_arch: x64
+          npm_config_target_arch: x64
+          npm_config_runtime: electron
+          npm_config_disturl: https://electronjs.org/headers
+          npm_config_build_from_source: true
+          npm_config_cache: ${{ runner.temp }}/.npm
+          ELECTRON_CACHE: ${{ runner.temp }}/.cache/electron
+          ELECTRON_BUILDER_CACHE: ${{ runner.temp }}/.cache/electron-builder
+          MSVS_VERSION: 2022
+          GYP_MSVS_VERSION: 2022
+          WindowsTargetPlatformVersion: '10.0.19041.0'
+          _WIN32_WINNT: '0x0A00'
+          CI: true
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Write-Host "Backend bundle: $env:AIONUI_BACKEND_LOCAL_BUNDLE_DIR"
+          node scripts/build-with-builder.js x64 --win --x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      # ---------- 校验 ----------
+      - name: Verify build outputs
+        shell: pwsh
+        env:
+          BUNDLE_SHA256: ${{ steps.bundle.outputs.sha256 }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $installer = Get-ChildItem -Path out -Filter '*-win-x64.exe' | Select-Object -First 1
+          if (-not $installer) { throw 'Installer not found in out/ (*-win-x64.exe)' }
+          Write-Host "Installer: $($installer.Name) ($([math]::Round($installer.Length / 1MB, 1)) MB)"
+
+          # rcedit 正常执行时 FileDescription 应为 AionUi
+          $exeInfo = (Get-Item 'out/win-unpacked/AionUi.exe').VersionInfo
+          if ($exeInfo.FileDescription -eq 'AionUi') {
+            Write-Host '✅ exe metadata OK (FileDescription: AionUi)'
+          } else {
+            throw "exe metadata unexpected (FileDescription: $($exeInfo.FileDescription))"
+          }
+
+          # 关键校验：包内 aioncore 必须与本次编译产物完全一致（防"打进错后端"）
+          $packagedHash = (Get-FileHash 'out/win-unpacked/resources/bundled-aioncore/win32-x64/aioncore.exe' -Algorithm SHA256).Hash
+          if ($packagedHash -ne $env:BUNDLE_SHA256) {
+            throw "Bundled aioncore hash mismatch! packaged=$packagedHash expected=$env:BUNDLE_SHA256"
+          }
+          Write-Host "✅ bundled aioncore matches this build ($($packagedHash.Substring(0, 8))...)"
+
+      - name: Write build summary
+        shell: pwsh
+        env:
+          UI_COMMIT: ${{ steps.ui_commit.outputs.short }}
+          CORE_COMMIT: ${{ steps.core_commit.outputs.short }}
+        run: |
+          $version = (node -p "require('./package.json').version").Trim()
+          $installer = Get-ChildItem -Path out -Filter '*-win-x64.exe' | Select-Object -First 1
+          $mrCount = (Get-ChildItem 'aioncore-bundle/managed-resources' -Recurse -File).Count
+          $summary = @"
+          ## 🚀 Custom Build Summary (Windows x64)
+
+          | Item | Value |
+          | --- | --- |
+          | AionUi version | $version |
+          | AionUi commit | $env:UI_COMMIT |
+          | AionCore ref | ${{ inputs.core_repo }}@${{ inputs.core_ref }} |
+          | AionCore commit | $env:CORE_COMMIT |
+          | Installer | $($installer.Name) ($([math]::Round($installer.Length / 1MB, 1)) MB) |
+          | managed-resources | $mrCount files |
+          "@
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary -Encoding utf8
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: aionui-custom-win-x64-ui${{ steps.ui_commit.outputs.short }}-core${{ steps.core_commit.outputs.short }}
+          path: |
+            out/*.exe
+            !out/*__uninstaller.exe
+            out/*.yml
+          if-no-files-found: error
+          retention-days: 14
+
+  # ---------- macOS 矩阵准备 ----------
+  prepare-macos-matrix:
+    name: 'Prepare macOS Matrix'
+    if: inputs.platform == 'all' || startsWith(inputs.platform, 'macos')
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+
+    steps:
+      - name: Generate build matrix
+        id: set-matrix
+        shell: bash
+        run: |
+          PLATFORM='${{ inputs.platform }}'
+
+          MAC_ARM64='{"arch":"arm64","rust_target":"aarch64-apple-darwin"}'
+          MAC_X64='{"arch":"x64","rust_target":"x86_64-apple-darwin"}'
+
+          if [ "$PLATFORM" = 'macos-arm64' ]; then
+            MATRIX="{\"include\":[$MAC_ARM64]}"
+          elif [ "$PLATFORM" = 'macos-x64' ]; then
+            MATRIX="{\"include\":[$MAC_X64]}"
+          elif [ "$PLATFORM" = 'all' ] || [ "$PLATFORM" = 'macos-all' ]; then
+            MATRIX="{\"include\":[$MAC_ARM64,$MAC_X64]}"
+          else
+            echo "platform '$PLATFORM' does not include macOS, emitting empty matrix"
+            MATRIX="{\"include\":[]}"
+          fi
+
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "macOS matrix for '$PLATFORM':"
+          echo "$MATRIX" | python3 -m json.tool
+
+  # ---------- macOS arm64 / x64 ----------
+  build-macos:
+    name: 'macOS ${{ matrix.arch }}'
+    needs: prepare-macos-matrix
+    if: inputs.platform == 'all' || startsWith(inputs.platform, 'macos')
+    runs-on: macos-14
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare-macos-matrix.outputs.matrix) }}
+
+    steps:
+      # ---------- 源码准备 ----------
+      - name: Checkout AionUi
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ui_ref || github.ref }}
+
+      - name: Record AionUi commit
+        id: ui_commit
+        shell: bash
+        run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout AionCore
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ inputs.core_repo }}
+          ref: ${{ inputs.core_ref }}
+          path: aioncore-src
+
+      - name: Record AionCore commit
+        id: core_commit
+        shell: bash
+        working-directory: aioncore-src
+        run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      # ---------- AionCore 编译（与官方 build-manual.yml macOS 步骤对齐） ----------
+      # macos-14 是 ARM runner：arm64 原生编译；x64 通过 Xcode 交叉编译（官方同款做法）
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.95.0'
+          targets: ${{ matrix.rust_target }}
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: 'aioncore-src'
+          shared-key: custom-macos-${{ matrix.rust_target }}-${{ inputs.core_ref }}
+
+      - name: Build aioncore binary
+        shell: bash
+        working-directory: aioncore-src
+        run: cargo build --release --target ${{ matrix.rust_target }} -p aionui-app
+
+      # ---------- 组装本地 bundle ----------
+      - name: Assemble local aioncore bundle
+        id: bundle
+        shell: bash
+        env:
+          AIONUI_BUNDLED_MANAGED_RESOURCES: ''
+        run: |
+          set -euo pipefail
+
+          core_bin="aioncore-src/target/${{ matrix.rust_target }}/release/aioncore"
+          if [ ! -f "$core_bin" ]; then
+            echo "aioncore not found: $core_bin"
+            exit 1
+          fi
+
+          mkdir -p aioncore-bundle/managed-resources
+          cp "$core_bin" aioncore-bundle/aioncore
+          chmod +x aioncore-bundle/aioncore
+
+          # 与官方 prepareManagedResources() 相同的调用方式
+          data_dir="$RUNNER_TEMP/aioncore-prepare-data"
+          rm -rf "$data_dir"
+          echo 'Generating managed-resources with the fresh binary...'
+          ./aioncore-bundle/aioncore --data-dir "$data_dir" prepare-managed-resources --bundle-out aioncore-bundle/managed-resources
+          rm -rf "$data_dir"
+
+          mr_count=$(find aioncore-bundle/managed-resources -type f | wc -l | tr -d ' ')
+          echo "managed-resources: $mr_count files"
+          if [ "$mr_count" -lt 100 ]; then
+            echo "managed-resources looks incomplete: $mr_count files"
+            exit 1
+          fi
+
+          sha=$(shasum -a 256 aioncore-bundle/aioncore | cut -d' ' -f1)
+          echo "sha256=$sha" >> "$GITHUB_OUTPUT"
+
+      # ---------- macOS 代码签名（可选；未配 secrets 时自动跳过，构建无签名包） ----------
+      - name: Setup macOS code signing (optional)
+        shell: bash
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD || 'temp-keychain-password' }}
+        run: |
+          if [ -n "$BUILD_CERTIFICATE_BASE64" ]; then
+            echo "Installing code signing certificate..."
+
+            echo $BUILD_CERTIFICATE_BASE64 | base64 --decode > certificate.p12
+
+            security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+            security default-keychain -s build.keychain
+            security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+
+            security import certificate.p12 -k build.keychain -P "$P12_PASSWORD" -T /usr/bin/codesign
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+
+            rm certificate.p12
+            echo "Certificate imported successfully"
+          else
+            echo "No certificate provided - building unsigned application"
+            echo "To enable code signing, add BUILD_CERTIFICATE_BASE64 and P12_PASSWORD secrets"
+          fi
+
+      # ---------- AionUi 构建（与官方 _build-reusable.yml macOS 步骤对齐） ----------
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache Electron artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/.cache/electron
+            ${{ runner.temp }}/.cache/electron-builder
+          key: electron-cache-macos-${{ matrix.arch }}-${{ hashFiles('package.json', 'bun.lock') }}
+          restore-keys: |
+            electron-cache-macos-${{ matrix.arch }}-
+            electron-cache-macos-
+
+      - name: Install dependencies
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_wait_seconds: 30
+          command: bun install --frozen-lockfile
+
+      - name: Run postinstall
+        shell: bash
+        run: bun run postinstall || true
+
+      # 官方非 Windows 路径：用 electron-builder install-app-deps 重建原生模块
+      - name: Rebuild native modules for Electron
+        shell: bash
+        env:
+          npm_config_runtime: electron
+          npm_config_disturl: https://electronjs.org/headers
+          ELECTRON_CACHE: ${{ runner.temp }}/.cache/electron
+          ELECTRON_BUILDER_CACHE: ${{ runner.temp }}/.cache/electron-builder
+        run: bunx electron-builder install-app-deps
+
+      - name: Build DMG with electron-builder
+        shell: bash
+        env:
+          AIONUI_BACKEND_LOCAL_BUNDLE_DIR: ${{ github.workspace }}/aioncore-bundle
+          NODE_OPTIONS: '--max-old-space-size=8192'
+          npm_config_arch: ${{ matrix.arch }}
+          npm_config_target_arch: ${{ matrix.arch }}
+          npm_config_runtime: electron
+          npm_config_disturl: https://electronjs.org/headers
+          npm_config_cache: ${{ runner.temp }}/.npm
+          ELECTRON_CACHE: ${{ runner.temp }}/.cache/electron
+          ELECTRON_BUILDER_CACHE: ${{ runner.temp }}/.cache/electron-builder
+          # 签名相关：secrets 未配置时为空 → electron-builder 自动跳过签名
+          APP_ID: ${{ secrets.APP_ID }}
+          identity: ${{ secrets.IDENTITY }}
+          CSC_NAME: ${{ secrets.IDENTITY }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          CI: true
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "Backend bundle: $AIONUI_BACKEND_LOCAL_BUNDLE_DIR"
+          node scripts/build-with-builder.js ${{ matrix.arch }} --mac --${{ matrix.arch }}
+
+      # ---------- 校验 ----------
+      - name: Verify build outputs
+        shell: bash
+        env:
+          BUNDLE_SHA256: ${{ steps.bundle.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+
+          dmg=$(ls out/*.dmg 2>/dev/null | head -n1 || true)
+          if [ -z "$dmg" ]; then
+            echo 'DMG not found in out/'
+            exit 1
+          fi
+          dmg_mb=$(du -m "$dmg" | cut -f1)
+          echo "DMG: $(basename "$dmg") ($dmg_mb MB)"
+
+          # 关键校验：包内 aioncore 必须与本次编译产物完全一致（防"打进错后端"）
+          packaged=$(find out -type f -path "*bundled-aioncore/darwin-${{ matrix.arch }}/aioncore" | head -n1)
+          if [ -z "$packaged" ]; then
+            echo 'bundled aioncore not found in app bundle'
+            exit 1
+          fi
+          packaged_hash=$(shasum -a 256 "$packaged" | cut -d' ' -f1)
+          if [ "$packaged_hash" != "$BUNDLE_SHA256" ]; then
+            echo "Bundled aioncore hash mismatch! packaged=$packaged_hash expected=$BUNDLE_SHA256"
+            exit 1
+          fi
+          echo "✅ bundled aioncore matches this build (${packaged_hash:0:8}...)"
+
+      # ---------- 钥匙串清理（导入了证书时） ----------
+      - name: Clean up keychain
+        if: always()
+        shell: bash
+        run: |
+          if security list-keychains | grep -q build.keychain; then
+            security delete-keychain build.keychain
+            echo "Temporary keychain deleted"
+          fi
+
+      - name: Write build summary
+        shell: bash
+        env:
+          UI_COMMIT: ${{ steps.ui_commit.outputs.short }}
+          CORE_COMMIT: ${{ steps.core_commit.outputs.short }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          dmg=$(ls out/*.dmg 2>/dev/null | head -n1 || true)
+          dmg_name=$(basename "${dmg:-unknown}")
+          dmg_mb=$(du -m "$dmg" 2>/dev/null | cut -f1 || echo '?')
+          mr_count=$(find aioncore-bundle/managed-resources -type f | wc -l | tr -d ' ')
+          {
+            echo "## 🚀 Custom Build Summary (macOS ${{ matrix.arch }})"
+            echo ''
+            echo '| Item | Value |'
+            echo '| --- | --- |'
+            echo "| AionUi version | $version |"
+            echo "| AionUi commit | $UI_COMMIT |"
+            echo "| AionCore ref | ${{ inputs.core_repo }}@${{ inputs.core_ref }} |"
+            echo "| AionCore commit | $CORE_COMMIT |"
+            echo "| DMG | $dmg_name ($dmg_mb MB) |"
+            echo "| managed-resources | $mr_count files |"
+            echo ''
+            echo '### 无签名包的首次打开方式'
+            echo '- macOS 14 及以前：右键 App → 打开 → 再点"打开"'
+            echo '- macOS 15+：双击被拦后，到 系统设置 → 隐私与安全性 → 底部点"仍要打开"'
+            echo '- 或终端执行：`xattr -cr /Applications/AionUi.app`（先拖入 Applications）'
+            echo '- 正式签名：配置 BUILD_CERTIFICATE_BASE64 / P12_PASSWORD / IDENTITY secrets 后重跑'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: aionui-custom-macos-${{ matrix.arch }}-ui${{ steps.ui_commit.outputs.short }}-core${{ steps.core_commit.outputs.short }}
+          path: |
+            out/*.dmg
+            out/AionUi-*-mac-*.zip
+            out/*.yml
+          if-no-files-found: error
+          retention-days: 14
