@@ -2,6 +2,7 @@ name: '🚀 Build My Version (AionCore + AionUi)'
 
 # Fork 定制打包：同一个 workflow 内编译自己的 AionCore 后端并打进 AionUi 安装包。
 # 平台矩阵：Windows x64 + macOS arm64 + macOS x64（一次触发并行构建，可用 platform 输入只打指定平台）。
+# 产物去向：Artifacts（保留 14 天）；当 release_tag 输入非空时，构建成功后自动打 tag 并发布 GitHub Release。
 #
 # 为什么用 AIONUI_BACKEND_LOCAL_BUNDLE_DIR 注入后端：
 # prepare-aioncore.js 的解析顺序是 LOCAL_BUNDLE_DIR > Actions artifact(run id) > GitHub Release(pin) > LOCAL_BINARY。
@@ -50,6 +51,11 @@ on:
         required: true
         default: 'marvin-dec/AionCore'
         type: string
+      release_tag:
+        description: '发布到 Release 的 tag 名（如 v2.2.2-custom.1；留空 = 只出 Artifacts 不发 Release）'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -71,6 +77,8 @@ jobs:
   build-windows-x64:
     name: 'Windows x64'
     if: inputs.platform == 'all' || inputs.platform == 'windows-x64'
+    outputs:
+      core_commit: ${{ steps.core_commit.outputs.short }}
     runs-on: windows-2022
     timeout-minutes: 120
 
@@ -390,8 +398,10 @@ jobs:
     name: 'macOS ${{ matrix.arch }}'
     needs: prepare-macos-matrix
     if: inputs.platform == 'all' || startsWith(inputs.platform, 'macos')
+    outputs:
+      core_commit: ${{ steps.core_commit.outputs.short }}
     # macOS 14 镜像已于 2026-11-02 从 GitHub Actions 退役（issues/15226），
-    # 使用 macos-latest（当前为 macOS 26 ARM）：arm64 原生编译，x64 走 Xcode 交叉编译 + Rosetta
+    # 改用 macos-latest（当前为 macOS 26 ARM）：arm64 原生编译；x64 通过 Xcode 交叉编译（官方同款做法）
     runs-on: macos-latest
     timeout-minutes: 120
     strategy:
@@ -422,20 +432,6 @@ jobs:
         shell: bash
         working-directory: aioncore-src
         run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-
-      # ---------- AionCore 编译（与官方 build-manual.yml macOS 步骤对齐） ----------
-      # macos-14 是 ARM runner：arm64 原生编译；x64 通过 Xcode 交叉编译（官方同款做法）
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: '1.95.0'
-          targets: ${{ matrix.rust_target }}
-
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: 'aioncore-src'
-          shared-key: custom-macos-${{ matrix.rust_target }}-${{ inputs.core_ref }}
 
       - name: Build aioncore binary
         shell: bash
@@ -658,3 +654,99 @@ jobs:
             out/*.yml
           if-no-files-found: error
           retention-days: 14
+
+  # ---------- 发布到 GitHub Release（release_tag 留空时自动跳过） ----------
+  release:
+    name: 'Publish to Release'
+    needs: [build-windows-x64, build-macos]
+    # 触发条件：填了 release_tag；被选中的平台 job 全部 success（未选中的平台是 skipped，放行）
+    if: >-
+      inputs.release_tag != '' &&
+      (needs.build-windows-x64.result == 'success' || needs.build-windows-x64.result == 'skipped') &&
+      (needs.build-macos.result == 'success' || needs.build-macos.result == 'skipped') &&
+      (needs.build-windows-x64.result == 'success' || needs.build-macos.result == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      # 仅此 job 提权：需要 contents: write 才能建 tag / 建 Release / 传资产
+      contents: write
+
+    steps:
+      - name: Checkout AionUi
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ui_ref || github.ref }}
+
+      - name: Record AionUi commit
+        id: commit
+        shell: bash
+        run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      # 下载本次运行的全部构建产物（每个 artifact 一个子目录）
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: build-artifacts
+
+      - name: Assemble release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+
+          # 安装包（exe/dmg/zip 文件名自带平台与架构后缀，无重名）
+          find build-artifacts -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.zip' \) -exec cp -f {} release-assets/ \;
+
+          # 更新器元数据：两个 mac 架构产物都叫 latest-mac.yml，按 electron-updater 约定重命名
+          # （arm64 查询 latest-arm64-mac.yml，x64 查询 latest-mac.yml）
+          win_yml=$(find build-artifacts -type f -name 'latest.yml' | head -n1 || true)
+          if [ -n "$win_yml" ]; then cp -f "$win_yml" release-assets/latest.yml; fi
+          arm64_yml=$(find build-artifacts -type f -path '*macos-arm64*' -name 'latest-mac.yml' | head -n1 || true)
+          if [ -n "$arm64_yml" ]; then cp -f "$arm64_yml" release-assets/latest-arm64-mac.yml; fi
+          x64_yml=$(find build-artifacts -type f -path '*macos-x64*' -name 'latest-mac.yml' | head -n1 || true)
+          if [ -n "$x64_yml" ]; then cp -f "$x64_yml" release-assets/latest-mac.yml; fi
+
+          cd release-assets
+          sha256sum * > SHA256SUMS.txt
+          cd ..
+          echo "Release assets:"
+          ls -lh release-assets
+
+      - name: Create tag and publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          UI_COMMIT: ${{ steps.commit.outputs.short }}
+          CORE_COMMIT: ${{ needs.build-windows-x64.outputs.core_commit || needs.build-macos.outputs.core_commit }}
+          CORE_REF: ${{ inputs.core_ref }}
+        run: |
+          set -euo pipefail
+          SHA=$(git rev-parse HEAD)
+          NOTES="定制构建：AionUi $UI_COMMIT + AionCore $CORE_COMMIT ($CORE_REF)。无签名构建：macOS 包首次打开方式见 Actions 运行页 Summary。"
+
+          if git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_TAG}\$"; then
+            echo "tag 已存在: $RELEASE_TAG"
+            TARGET_ARG=""
+          else
+            git tag "$RELEASE_TAG"
+            if git push origin "$RELEASE_TAG"; then
+              echo "tag 已推送: $RELEASE_TAG"
+              TARGET_ARG=""
+            else
+              echo "::notice::git 推 tag 被拒（GITHUB_TOKEN 无 workflow scope 时的已知限制）——改走 API 建 tag"
+              git tag -d "$RELEASE_TAG"
+              TARGET_ARG="--target=$SHA"
+            fi
+          fi
+
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release 已存在，覆盖上传资产 (--clobber)"
+            gh release upload "$RELEASE_TAG" release-assets/* --clobber
+          else
+            gh release create "$RELEASE_TAG" release-assets/* $TARGET_ARG \
+              --title "$RELEASE_TAG" \
+              --notes "$NOTES" \
+              --generate-notes
+          fi
+
+          echo "Release 已发布: https://github.com/$GITHUB_REPOSITORY/releases/tag/$RELEASE_TAG"
