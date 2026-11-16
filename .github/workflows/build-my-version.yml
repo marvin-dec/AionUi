@@ -445,6 +445,12 @@ jobs:
         shell: bash
         run: rustup target add ${{ matrix.rust_target }}
 
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: 'aioncore-src'
+          shared-key: custom-macos-${{ matrix.rust_target }}-${{ inputs.core_ref }}
+
       - name: Build aioncore binary
         shell: bash
         working-directory: aioncore-src
