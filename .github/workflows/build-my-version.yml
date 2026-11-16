@@ -390,7 +390,9 @@ jobs:
     name: 'macOS ${{ matrix.arch }}'
     needs: prepare-macos-matrix
     if: inputs.platform == 'all' || startsWith(inputs.platform, 'macos')
-    runs-on: macos-14
+    # macOS 14 镜像已于 2026-11-02 从 GitHub Actions 退役（issues/15226），
+    # 使用 macos-latest（当前为 macOS 26 ARM）：arm64 原生编译，x64 走 Xcode 交叉编译 + Rosetta
+    runs-on: macos-latest
     timeout-minutes: 120
     strategy:
       fail-fast: false
