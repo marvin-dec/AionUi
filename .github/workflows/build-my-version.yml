@@ -433,6 +433,18 @@ jobs:
         working-directory: aioncore-src
         run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.95.0'
+          targets: ${{ matrix.rust_target }}
+
+      # macos-latest 是 ARM64 runner，交叉编译 x86_64-apple-darwin 需要显式安装 target
+      - name: Ensure cross-compilation target is installed (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: rustup target add ${{ matrix.rust_target }}
+
       - name: Build aioncore binary
         shell: bash
         working-directory: aioncore-src
